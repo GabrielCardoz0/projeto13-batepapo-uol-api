@@ -158,9 +158,34 @@ app.post("/status", (async (req, res) => {
         console.log(error);
     };
 
-    res.sendStatus(200)
-}))
+    res.sendStatus(200);
+}));
 
+
+setInterval(( async ()=>{
+    const now = Date.now();
+
+    const listaUser = await db.collection("users").find().toArray();
+
+    listaUser.map( async obj => {
+
+        if(now - obj.lastStatus > 10000){
+
+            await db.collection("mensagens").insertOne({
+                from: obj.name,
+                to: 'Todos',
+                text: 'sai da sala...',
+                type: 'status',
+                time: dayjs(Date.now()).format('HH:mm:ss')
+            });
+
+            await db.collection("users").deleteOne({name:obj.name});
+  
+        };
+
+    })
+    console.log(now)
+}), 15000);
 
 
 app.listen(5000);
