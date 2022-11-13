@@ -19,6 +19,8 @@ mongoClient.connect().then(() => {
     db = mongoClient.db("DadosProjeto13");
 });
 
+
+
 app.post("/participants",  ( async (req, res) => {
 
     const user = req.body;
@@ -63,6 +65,14 @@ app.post("/participants",  ( async (req, res) => {
     res.sendStatus(201);
 }));
 
+app.get("/participants", ( async (req, res) => {
+    try {
+        const listaUsers = await db.collection("users").find().toArray();
+        return res.send(listaUsers);
+    } catch(error){
+        console.log(error);
+    }
+}));
 
 
 
