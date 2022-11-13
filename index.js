@@ -4,14 +4,24 @@ import { MongoClient , ObjectId} from "mongodb";
 import Joi from "joi";
 import dayjs from "dayjs";
 
+
+// Configurações da API:
 const app = express();
 app.use(express.json());
 app.use(cors());
 
+// Modelos Joi:
 const userSchema = Joi.object({
     name: Joi.string().required()
 });
 
+const messageSchema = Joi.object({
+    to: Joi.string().required(),
+    text: Joi.string().required(),
+    type: Joi.string().required().valid("message","private_message")
+})
+
+// conexões com o Mongo:
 const mongoClient = new MongoClient("mongodb://localhost:27017");
 let db;
 
@@ -19,7 +29,7 @@ mongoClient.connect().then(() => {
     db = mongoClient.db("DadosProjeto13");
 });
 
-
+// Metodos da API:
 
 app.post("/participants",  ( async (req, res) => {
 
@@ -54,7 +64,7 @@ app.post("/participants",  ( async (req, res) => {
         };
         
         db.collection("users").insertOne(newUser);
-        db.collection("mensagens").inserOne(newMsg);
+        db.collection("mensagens").insertOne(newMsg);
 
 
     } catch(error){
@@ -71,62 +81,66 @@ app.get("/participants", ( async (req, res) => {
         return res.send(listaUsers);
     } catch(error){
         console.log(error);
-    }
+    };
+}));
+
+app.post("/messages", ( async (req, res) => {
+
+    try{
+        const fromUser = req.headers.user;
+        const messageInfo = req.body;
+
+        // verificação do usuario:
+        const userVerify = await db.collection("users").findOne({name:fromUser});
+
+        
+        if(!userVerify){
+            return res.status(422).send("usuario não encontrado")
+        };
+
+        // validação da mensagem:
+        const validation = messageSchema.validate(messageInfo, {abortEarly:false});
+
+        if(validation.error){
+            const listaErros = validation.error.details.map(d => d.message);
+            return res.status(422).send(listaErros);
+        };
+
+        const newMessage = {
+            from:fromUser,
+            ...messageInfo,
+            time: dayjs(Date.now()).format('HH:mm:ss')
+        };
+
+        db.collection("mensagens").insertOne(newMessage);
+
+    }catch(error){
+        console.log(error)
+    };
+
+    res.sendStatus(201);
+}));
+
+app.get("/messages?:limit", ( async (req, res) => {
+    let limite;
+    let listaMsg;
+    const user = req.headers.user;
+    let novaLista;
+
+    try{
+        listaMsg = await db.collection("mensagens").find().toArray();
+
+        novaLista = listaMsg.filter((o) => o.to === user || o.type === "message");
+
+        limite = req.query.limit;
+    }catch(error){
+        console.log(error);
+    };
+
+    res.send(novaLista.slice(-limite).reverse());
 }));
 
 
 
-
-// app.get("participants", ((req, res) => {
-//     res.send(listaParticipantes);
-// }));
-
-// app.post("messages", (req, res) => {
-//     const {to, text, type} = req.body;
-    
-//     //validações aqui:
-
-//     //
-    
-//     res.send(201);
-// });
-
-// app.get("messages", ((req, res) => {
-//     res.send(listaMsg);
-// }));
-
-// app.post("status", ((req, res) => {
-//     //validação
-//     //
-
-//     res.sendStatus(200)
-// }))
-
-
-
-
-// const clienteMongo = new MongoClient("mongodb://localhost:27017");
-// let db;
-
-// clienteMongo.connect().then( () => {
-//     db = clienteMongo.db("DadosProjeto13")
-// });
-
-// app.get("/usuarios", ((req, res) => {
-//     db.collection("users").find().toArray().then(user => {
-//         console.log(user)
-//         res.send(user)
-//     })
-// }));
-
-// app.post("/usuarios", ((req, res) => {
-//     db.collection("users").insertOne({
-//         nome:"creide",
-//         idade:"33 aninhos"
-//     });
-//     res.send("OK")
-// }));
-
 app.listen(5000);
-
 
