@@ -140,6 +140,27 @@ app.get("/messages?:limit", ( async (req, res) => {
     res.send(novaLista.slice(-limite).reverse());
 }));
 
+app.post("/status", (async (req, res) => {
+    const user = req.headers.user;
+    let listaParticipantes;
+    try {
+        console.log(user)
+        const validaUser = await db.collection("users").findOne({name:user});
+
+        if(!validaUser) return res.sendStatus(404);
+
+        await db.collection("users").updateOne(
+            {name:user},
+            {$set: {lastStatus:Date.now()}}
+        );
+
+    }catch(error){
+        console.log(error);
+    };
+
+    res.sendStatus(200)
+}))
+
 
 
 app.listen(5000);
